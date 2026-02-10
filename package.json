@@ -6,6 +6,7 @@
     "clean": "node -e \"const fs=require('node:fs');['.next','dist','unpackage','node_modules/.vite','node_modules/.vite-uni'].forEach((p)=>{try{fs.rmSync(p,{recursive:true,force:true})}catch{}})\"",
     "dev:h5": "uni -p h5",
     "dev:api": "node server/api-server.mjs",
+    "build": "npm run build:h5",
     "build:h5": "uni build -p h5 && node -e \"console.log('H5 output: dist/build/h5')\"",
     "preview:h5": "node server/preview-h5.mjs",
     "build:preview:h5": "npm run build:h5 && npm run preview:h5"

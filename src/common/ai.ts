@@ -2,8 +2,62 @@ import type { Message } from "./types";
 
 const FALLBACK_REPLY = "LetWechat is a little busy now, please try again in a moment.";
 const DEFAULT_ENDPOINT = "/api/ai-reply";
+const REQUEST_CACHE_TTL_MS = 15000;
+const REQUEST_CACHE_LIMIT = 120;
+let resolvedEndpointCache: string | null = null;
+const replyCache = new Map<string, { reply: string; expiresAt: number }>();
+const inFlightReplyMap = new Map<string, Promise<string>>();
+
+const getLastUserText = (messages: Message[]) => {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const item = messages[i];
+    if (item.senderId === "me" && item.type === "text") {
+      return item.content.trim();
+    }
+  }
+  return "";
+};
+
+const normalizeKey = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+const buildRequestKey = (messages: Message[], contactName: string) => {
+  const lastUserText = getLastUserText(messages);
+  return `${normalizeKey(contactName)}|${normalizeKey(lastUserText)}`;
+};
+
+const getCachedReply = (key: string) => {
+  const cached = replyCache.get(key);
+  if (!cached) {
+    return null;
+  }
+  if (cached.expiresAt <= Date.now()) {
+    replyCache.delete(key);
+    return null;
+  }
+  return cached.reply;
+};
+
+const setCachedReply = (key: string, reply: string) => {
+  if (!reply || reply === FALLBACK_REPLY) {
+    return;
+  }
+  if (replyCache.size >= REQUEST_CACHE_LIMIT) {
+    const firstKey = replyCache.keys().next().value;
+    if (firstKey) {
+      replyCache.delete(firstKey);
+    }
+  }
+  replyCache.set(key, {
+    reply,
+    expiresAt: Date.now() + REQUEST_CACHE_TTL_MS,
+  });
+};
 
 const resolveEndpoint = () => {
+  if (resolvedEndpointCache) {
+    return resolvedEndpointCache;
+  }
+
   const custom = import.meta.env.VITE_AI_REPLY_URL;
   if (custom && custom.trim().length > 0) {
     const endpoint = custom.trim();
@@ -17,16 +71,21 @@ const resolveEndpoint = () => {
         // When testing from a phone browser, localhost points to the phone itself.
         if (isLocalHost && !currentIsLocal) {
           parsed.hostname = currentHost;
-          return parsed.toString();
+          resolvedEndpointCache = parsed.toString();
+          return resolvedEndpointCache;
         }
-        return parsed.toString();
+        resolvedEndpointCache = parsed.toString();
+        return resolvedEndpointCache;
       } catch {
+        resolvedEndpointCache = endpoint;
         return endpoint;
       }
     }
+    resolvedEndpointCache = endpoint;
     return endpoint;
   }
-  return DEFAULT_ENDPOINT;
+  resolvedEndpointCache = DEFAULT_ENDPOINT;
+  return resolvedEndpointCache;
 };
 
 const parseErrorMessage = (raw: unknown): string => {
@@ -111,28 +170,51 @@ const requestJSON = <T>(options: UniApp.RequestOptions) =>
   });
 
 export const getAIReply = async (messages: Message[], contactName: string): Promise<string> => {
-  try {
-    const endpoint = resolveEndpoint();
-    const payload = await requestJSON<{ reply?: string }>({
-      url: endpoint,
-      method: "POST",
-      data: {
-        messages,
-        contactName,
-      },
-      header: {
-        "Content-Type": "application/json",
-      },
-      timeout: 20000,
-    });
+  const requestKey = buildRequestKey(messages, contactName);
+  const cachedReply = getCachedReply(requestKey);
+  if (cachedReply) {
+    return cachedReply;
+  }
 
-    if (typeof payload.reply === "string" && payload.reply.trim().length > 0) {
-      return payload.reply;
+  const pending = inFlightReplyMap.get(requestKey);
+  if (pending) {
+    return pending;
+  }
+
+  const task = (async () => {
+    try {
+      const endpoint = resolveEndpoint();
+      const payload = await requestJSON<{ reply?: string }>({
+        url: endpoint,
+        method: "POST",
+        data: {
+          messages,
+          contactName,
+        },
+        header: {
+          "Content-Type": "application/json",
+        },
+        timeout: 20000,
+      });
+
+      if (typeof payload.reply === "string" && payload.reply.trim().length > 0) {
+        const reply = payload.reply.trim();
+        setCachedReply(requestKey, reply);
+        return reply;
+      }
+
+      return FALLBACK_REPLY;
+    } catch (error) {
+      console.error("AI Error:", error);
+      return toFriendlyReply(error);
     }
+  })();
 
-    return FALLBACK_REPLY;
-  } catch (error) {
-    console.error("AI Error:", error);
-    return toFriendlyReply(error);
+  inFlightReplyMap.set(requestKey, task);
+
+  try {
+    return await task;
+  } finally {
+    inFlightReplyMap.delete(requestKey);
   }
 };

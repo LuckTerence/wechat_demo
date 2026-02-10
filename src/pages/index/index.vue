@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { getAIReply } from "../../common/ai";
 import { MOCK_MY_USER_ID } from "../../common/constants";
 import { cloneSessions, currentUser, generateContacts, generateSessionPool } from "../../common/mockData";
@@ -28,12 +28,14 @@ const chatListLoadingMore = ref(false);
 const chatListLoadingText = ref("Pull up to load more");
 const searchOpen = ref(false);
 const searchKeyword = ref("");
+const debouncedSearchKeyword = ref("");
 const animatingMessageIds = ref<Set<string>>(new Set());
 const moreMenuOpen = ref(false);
 const createdGroupCount = ref(1);
 const groupCreateMode = ref(false);
 const selectedGroupMemberIds = ref<string[]>([]);
 const emojiPanelOpen = ref(false);
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 const emojiOptions = [
   "😀",
@@ -147,27 +149,28 @@ const sessionRows = computed(() => {
     const previewText =
       lastMessage?.type === "image" ? "[Image]" : lastMessage?.content || "No messages yet";
     const displayTime = lastMessage ? formatTime(lastMessage.timestamp) : "";
+    const nameLower = contact?.name?.toLowerCase() || "";
+    const previewLower = previewText.toLowerCase();
 
     return {
       session,
       contact,
-      lastMessage,
       previewText,
       displayTime,
+      nameLower,
+      previewLower,
     };
   });
 });
 
 const visibleSessionRows = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase();
+  const keyword = debouncedSearchKeyword.value;
   if (!keyword) {
     return sessionRows.value;
   }
 
   return sessionRows.value.filter((row) => {
-    const name = row.contact?.name?.toLowerCase() || "";
-    const preview = row.previewText.toLowerCase();
-    return name.includes(keyword) || preview.includes(keyword);
+    return row.nameLower.includes(keyword) || row.previewLower.includes(keyword);
   });
 });
 
@@ -338,6 +341,27 @@ const messageSenderName = (message: Message) => {
   return getContact(message.senderId)?.name || "";
 };
 
+const activeMessageRows = computed(() => {
+  const session = activeSession.value;
+  if (!session) {
+    return [];
+  }
+  const isGroup = Boolean(session.isGroup);
+
+  return session.messages.map((message) => {
+    const mine = message.senderId === MOCK_MY_USER_ID;
+    const sender = mine ? currentUser : getContact(message.senderId);
+    return {
+      message,
+      mine,
+      entering: isMessageEntering(message.id),
+      avatar: mine ? currentUser.avatar : sender?.avatar || activeContact.value?.avatar || "",
+      senderId: mine ? currentUser.id : sender?.id || activeContact.value?.id || "",
+      senderName: isGroup && !mine ? sender?.name || "" : "",
+    };
+  });
+});
+
 const markMessageEntering = (messageId: string) => {
   const nextIds = new Set(animatingMessageIds.value);
   nextIds.add(messageId);
@@ -430,11 +454,30 @@ watch(activeSessionId, () => {
   });
 });
 
+watch(
+  searchKeyword,
+  (value) => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchKeyword.value = value.trim().toLowerCase();
+    }, 120);
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
+});
+
 const openSession = (sessionId: string) => {
   moreMenuOpen.value = false;
   emojiPanelOpen.value = false;
-  sessions.value = sessions.value.map((session) =>
-    session.id === sessionId ? { ...session, unreadCount: 0 } : session,
+  updateSessionById(sessionId, (session) =>
+    session.unreadCount > 0 ? { ...session, unreadCount: 0 } : session,
   );
   activeSessionId.value = sessionId;
 };
@@ -471,11 +514,13 @@ const openSearch = () => {
 
 const closeSearch = () => {
   searchKeyword.value = "";
+  debouncedSearchKeyword.value = "";
   searchOpen.value = false;
 };
 
 const clearSearch = () => {
   searchKeyword.value = "";
+  debouncedSearchKeyword.value = "";
 };
 
 const handleMoreAction = () => {
@@ -507,12 +552,13 @@ const toggleGroupMember = (contactId: string) => {
     return;
   }
 
-  if (selectedGroupMemberIds.value.includes(contactId)) {
-    selectedGroupMemberIds.value = selectedGroupMemberIds.value.filter((id) => id !== contactId);
-    return;
+  const nextSet = new Set(selectedGroupMemberIds.value);
+  if (nextSet.has(contactId)) {
+    nextSet.delete(contactId);
+  } else {
+    nextSet.add(contactId);
   }
-
-  selectedGroupMemberIds.value = [...selectedGroupMemberIds.value, contactId];
+  selectedGroupMemberIds.value = [...nextSet];
 };
 
 const cancelCreateGroup = () => {
@@ -616,10 +662,6 @@ const refreshChatTab = () => {
   }
 
   chatListRefresherTriggered.value = true;
-  sessions.value = sessions.value.map((session) => ({
-    ...session,
-    messages: [...session.messages],
-  }));
 
   const top = sessions.value[0];
   if (top) {
@@ -702,9 +744,7 @@ const startChatWithContact = (contactId: string) => {
     sessions.value = [session, ...sessions.value];
   }
 
-  sessions.value = sessions.value.map((item) =>
-    item.id === session?.id ? { ...item, unreadCount: 0 } : item,
-  );
+  updateSessionById(session.id, (item) => (item.unreadCount > 0 ? { ...item, unreadCount: 0 } : item));
   activeSessionId.value = session.id;
   viewingContactId.value = null;
   currentTab.value = "chat";
@@ -919,30 +959,30 @@ const appendEmoji = (emoji: string) => {
       <scroll-view class="message-list" scroll-y :scroll-into-view="messageScrollIntoView">
         <view class="message-padding" />
         <view
-          v-for="msg in activeSession.messages"
-          :id="messageDomId(msg.id)"
-          :key="msg.id"
+          v-for="row in activeMessageRows"
+          :id="messageDomId(row.message.id)"
+          :key="row.message.id"
           class="message-row"
-          :class="{ mine: isMine(msg), entering: isMessageEntering(msg.id) }"
+          :class="{ mine: row.mine, entering: row.entering }"
         >
-          <image class="message-avatar" :src="messageAvatar(msg)" mode="aspectFill" @tap="openContact(messageUserId(msg))" />
-          <view class="message-bubble" :class="{ mine: isMine(msg) }">
-            <text v-if="activeSession.isGroup && !isMine(msg)" class="message-sender">{{ messageSenderName(msg) }}</text>
+          <image class="message-avatar" :src="row.avatar" mode="aspectFill" @tap="openContact(row.senderId)" />
+          <view class="message-bubble" :class="{ mine: row.mine }">
+            <text v-if="row.senderName" class="message-sender">{{ row.senderName }}</text>
             <text
-              v-if="msg.type === 'text'"
+              v-if="row.message.type === 'text'"
               class="message-text"
               selectable
-              @longpress="copyMessage(msg)"
-              @longtap="copyMessage(msg)"
-            >{{ msg.content }}</text>
+              @longpress="copyMessage(row.message)"
+              @longtap="copyMessage(row.message)"
+            >{{ row.message.content }}</text>
             <image
               v-else
               class="message-image"
-              :src="msg.content"
+              :src="row.message.content"
               mode="widthFix"
-              @tap="previewImage(msg.content)"
-              @longpress="copyMessage(msg)"
-              @longtap="copyMessage(msg)"
+              @tap="previewImage(row.message.content)"
+              @longpress="copyMessage(row.message)"
+              @longtap="copyMessage(row.message)"
             />
           </view>
         </view>

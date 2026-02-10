@@ -113,7 +113,7 @@ const buildMessages = (contact: User, index: number): Message[] => {
       id: `msg-${contact.id}-c`,
       senderId: contact.id,
       type: "image",
-      content: `${IMAGE_BASE}/${encodeURIComponent(contact.id)}-chat/320/220`,
+      content: `${IMAGE_BASE}/${encodeURIComponent(contact.id)}-chat/640/420`,
       timestamp: baseTime,
     });
   } else {
@@ -180,11 +180,6 @@ export const generateSessionPool = (contacts: User[]): ChatSession[] => {
     const timeB = b.messages[b.messages.length - 1]?.timestamp || 0;
     return timeB - timeA;
   });
-};
-
-export const generateInitialSessions = (contacts: User[], count = 8): ChatSession[] => {
-  const pool = generateSessionPool(contacts);
-  return pool.slice(0, count).map(cloneSession);
 };
 
 export const cloneSessions = (sessions: ChatSession[]): ChatSession[] => {

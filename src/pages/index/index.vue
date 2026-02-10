@@ -963,7 +963,7 @@ const appendEmoji = (emoji: string) => {
           <uni-icons type="arrow-left" size="22" color="#0f172a" />
         </view>
         <text class="top-title">{{ activeContact.name }}</text>
-        <view class="top-placeholder" />
+        <view class="top-placeholder compact" />
       </view>
 
       <scroll-view class="message-list" scroll-y :scroll-into-view="messageScrollIntoView">
@@ -1248,6 +1248,7 @@ const appendEmoji = (emoji: string) => {
 .page-root {
   height: 100%;
   background: #f4f5f7;
+  overflow-x: hidden;
 }
 
 .full-page,
@@ -1256,11 +1257,13 @@ const appendEmoji = (emoji: string) => {
   flex-direction: column;
   height: 100%;
   animation: pane-in 180ms linear;
+  overflow-x: hidden;
 }
 
 .tab-page {
   height: 100%;
   animation: pane-in 180ms linear;
+  overflow-x: hidden;
 }
 
 .tab-fade-enter-active,
@@ -1357,6 +1360,10 @@ const appendEmoji = (emoji: string) => {
 
 .top-placeholder {
   width: 90px;
+}
+
+.top-placeholder.compact {
+  width: 40px;
 }
 
 .header {
@@ -1774,8 +1781,9 @@ const appendEmoji = (emoji: string) => {
 
 .chat-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .chat-name-wrap {
@@ -1784,12 +1792,14 @@ const appendEmoji = (emoji: string) => {
   display: flex;
   align-items: center;
   gap: 5px;
+  overflow: hidden;
 }
 
 .chat-name {
-  max-width: 88%;
+  flex: 1;
+  min-width: 0;
   color: #13151a;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -1806,9 +1816,11 @@ const appendEmoji = (emoji: string) => {
 }
 
 .chat-time {
-  margin-left: 10px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
   color: #9ba3ad;
-  font-size: 16px;
+  font-size: 13px;
   line-height: 1.2;
 }
 
@@ -1822,6 +1834,7 @@ const appendEmoji = (emoji: string) => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .chat-preview {
@@ -1835,16 +1848,18 @@ const appendEmoji = (emoji: string) => {
 }
 
 .chat-unread {
-  min-width: 38px;
-  height: 32px;
-  border-radius: 16px;
-  padding: 0 10px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  padding: 0 7px;
   background: #006eff;
   color: #ffffff;
-  font-size: 14px;
-  line-height: 32px;
+  font-size: 12px;
+  line-height: 24px;
   text-align: center;
   font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .chat-unread.hot {
@@ -2131,6 +2146,7 @@ const appendEmoji = (emoji: string) => {
   background: #ffffff;
   border-radius: 6px;
   padding: 10px 12px;
+  min-width: 0;
 }
 
 .message-bubble.mine {
@@ -2144,6 +2160,9 @@ const appendEmoji = (emoji: string) => {
   font-size: 15px;
   line-height: 22px;
   user-select: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .message-sender {
@@ -2167,6 +2186,8 @@ const appendEmoji = (emoji: string) => {
   align-items: center;
   gap: 10px;
   backdrop-filter: blur(8px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-shell {
@@ -2286,6 +2307,7 @@ const appendEmoji = (emoji: string) => {
   align-items: center;
   justify-content: center;
   transition: transform 160ms linear, background-color 180ms linear, border-color 180ms linear;
+  flex-shrink: 0;
 }
 
 .input-primary-btn.active {
@@ -2442,6 +2464,38 @@ const appendEmoji = (emoji: string) => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 390px) {
+  .chat-item {
+    padding: 11px 10px;
+  }
+
+  .chat-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 26px;
+  }
+
+  .chat-name {
+    font-size: 16px;
+  }
+
+  .chat-time {
+    font-size: 12px;
+  }
+
+  .chat-preview {
+    font-size: 14px;
+  }
+
+  .chat-unread {
+    min-width: 22px;
+    height: 22px;
+    line-height: 22px;
+    font-size: 11px;
+    padding: 0 6px;
   }
 }
 </style>

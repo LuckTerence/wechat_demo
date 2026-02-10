@@ -22,10 +22,13 @@ const inputValue = ref("");
 const messageScrollIntoView = ref("");
 const chatListScrollIntoView = ref("");
 const chatListScrollTop = ref(0);
+const chatListSavedScrollTop = ref(0);
+const chatListLastScrollTop = ref(0);
 const lastChatTabTapAt = ref(0);
 const chatListRefreshing = ref(false);
 const chatListRefresherTriggered = ref(false);
 const chatListLoadingMore = ref(false);
+const chatListLoadMoreArmed = ref(true);
 const chatListLoadingText = ref("Pull up to load more");
 const chatListLastLoadMoreAt = ref(0);
 const searchOpen = ref(false);
@@ -38,8 +41,6 @@ const groupCreateMode = ref(false);
 const selectedGroupMemberIds = ref<string[]>([]);
 const emojiPanelOpen = ref(false);
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-let chatListScrollSyncTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingChatListScrollTop = 0;
 
 const emojiOptions = [
   "😀",
@@ -497,14 +498,12 @@ onBeforeUnmount(() => {
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer);
   }
-  if (chatListScrollSyncTimer) {
-    clearTimeout(chatListScrollSyncTimer);
-  }
 });
 
 const openSession = (sessionId: string) => {
   moreMenuOpen.value = false;
   emojiPanelOpen.value = false;
+  chatListScrollTop.value = chatListSavedScrollTop.value;
   updateSessionById(sessionId, (session) =>
     session.unreadCount > 0 ? { ...session, unreadCount: 0 } : session,
   );
@@ -514,6 +513,9 @@ const openSession = (sessionId: string) => {
 const backFromChat = () => {
   emojiPanelOpen.value = false;
   activeSessionId.value = null;
+  nextTick(() => {
+    chatListScrollTop.value = chatListSavedScrollTop.value;
+  });
 };
 
 const openContact = (contactId: string) => {
@@ -674,6 +676,7 @@ const handleChatListLoadMore = () => {
   const now = Date.now();
   if (
     chatListLoadingMore.value ||
+    !chatListLoadMoreArmed.value ||
     !chatListHasMore.value ||
     searchKeyword.value.trim() ||
     now - chatListLastLoadMoreAt.value < 500
@@ -682,6 +685,7 @@ const handleChatListLoadMore = () => {
   }
 
   chatListLastLoadMoreAt.value = now;
+  chatListLoadMoreArmed.value = false;
   chatListLoadingMore.value = true;
   chatListLoadingText.value = "Loading...";
 
@@ -698,14 +702,11 @@ const handleChatListScroll = (event: any) => {
   if (!Number.isFinite(top)) {
     return;
   }
-  pendingChatListScrollTop = top;
-  if (chatListScrollSyncTimer) {
-    return;
+  if (top < chatListLastScrollTop.value - 8) {
+    chatListLoadMoreArmed.value = true;
   }
-  chatListScrollSyncTimer = setTimeout(() => {
-    chatListScrollTop.value = pendingChatListScrollTop;
-    chatListScrollSyncTimer = null;
-  }, 48);
+  chatListLastScrollTop.value = top;
+  chatListSavedScrollTop.value = top;
 };
 
 const refreshChatTab = () => {
@@ -748,6 +749,9 @@ const refreshChatTab = () => {
     appendMoreSessions(1);
   }
 
+  chatListSavedScrollTop.value = 0;
+  chatListLastScrollTop.value = 0;
+  chatListLoadMoreArmed.value = true;
   chatListScrollTop.value = 0;
   chatListScrollIntoView.value = "chat-list-top";
   chatListRefreshing.value = true;

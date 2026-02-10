@@ -21,11 +21,13 @@ const subPage = ref<SubPageType | null>(null);
 const inputValue = ref("");
 const messageScrollIntoView = ref("");
 const chatListScrollIntoView = ref("");
+const chatListScrollTop = ref(0);
 const lastChatTabTapAt = ref(0);
 const chatListRefreshing = ref(false);
 const chatListRefresherTriggered = ref(false);
 const chatListLoadingMore = ref(false);
 const chatListLoadingText = ref("Pull up to load more");
+const chatListLastLoadMoreAt = ref(0);
 const searchOpen = ref(false);
 const searchKeyword = ref("");
 const debouncedSearchKeyword = ref("");
@@ -36,6 +38,8 @@ const groupCreateMode = ref(false);
 const selectedGroupMemberIds = ref<string[]>([]);
 const emojiPanelOpen = ref(false);
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let chatListScrollSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingChatListScrollTop = 0;
 
 const emojiOptions = [
   "😀",
@@ -493,6 +497,9 @@ onBeforeUnmount(() => {
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer);
   }
+  if (chatListScrollSyncTimer) {
+    clearTimeout(chatListScrollSyncTimer);
+  }
 });
 
 const openSession = (sessionId: string) => {
@@ -664,10 +671,17 @@ const appendMoreSessions = (count: number) => {
 };
 
 const handleChatListLoadMore = () => {
-  if (chatListLoadingMore.value || !chatListHasMore.value || searchKeyword.value.trim()) {
+  const now = Date.now();
+  if (
+    chatListLoadingMore.value ||
+    !chatListHasMore.value ||
+    searchKeyword.value.trim() ||
+    now - chatListLastLoadMoreAt.value < 500
+  ) {
     return;
   }
 
+  chatListLastLoadMoreAt.value = now;
   chatListLoadingMore.value = true;
   chatListLoadingText.value = "Loading...";
 
@@ -675,7 +689,23 @@ const handleChatListLoadMore = () => {
     appendMoreSessions(loadMoreSize);
     chatListLoadingMore.value = false;
     chatListLoadingText.value = chatListHasMore.value ? "Pull up to load more" : "No more chats";
+    chatListLastLoadMoreAt.value = Date.now();
   }, 280);
+};
+
+const handleChatListScroll = (event: any) => {
+  const top = Number(event?.detail?.scrollTop ?? 0);
+  if (!Number.isFinite(top)) {
+    return;
+  }
+  pendingChatListScrollTop = top;
+  if (chatListScrollSyncTimer) {
+    return;
+  }
+  chatListScrollSyncTimer = setTimeout(() => {
+    chatListScrollTop.value = pendingChatListScrollTop;
+    chatListScrollSyncTimer = null;
+  }, 48);
 };
 
 const refreshChatTab = () => {
@@ -718,6 +748,7 @@ const refreshChatTab = () => {
     appendMoreSessions(1);
   }
 
+  chatListScrollTop.value = 0;
   chatListScrollIntoView.value = "chat-list-top";
   chatListRefreshing.value = true;
   setTimeout(() => {
@@ -1136,9 +1167,11 @@ const appendEmoji = (emoji: string) => {
               class="list-scroll with-tabbar chat-list-scroll"
               :class="{ 'chat-list-refreshing': chatListRefreshing }"
               scroll-y
+              :scroll-top="chatListScrollTop"
               :scroll-into-view="chatListScrollIntoView"
               refresher-enabled
               :refresher-triggered="chatListRefresherTriggered"
+              @scroll="handleChatListScroll"
               @refresherrefresh="handleChatListRefresh"
               @scrolltolower="handleChatListLoadMore"
               :lower-threshold="80"
@@ -1282,14 +1315,17 @@ const appendEmoji = (emoji: string) => {
 }
 
 .tab-slide-left-enter-active,
+.tab-slide-right-enter-active {
+  transition: transform 240ms linear;
+}
+
 .tab-slide-left-leave-active,
-.tab-slide-right-enter-active,
 .tab-slide-right-leave-active {
   transition: opacity 240ms linear, transform 240ms linear;
 }
 
 .tab-slide-left-enter-from {
-  opacity: 0;
+  opacity: 1;
   transform: translateX(26px);
 }
 
@@ -1299,7 +1335,7 @@ const appendEmoji = (emoji: string) => {
 }
 
 .tab-slide-right-enter-from {
-  opacity: 0;
+  opacity: 1;
   transform: translateX(-26px);
 }
 
@@ -2058,6 +2094,7 @@ const appendEmoji = (emoji: string) => {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(10px);
   overflow: hidden;
+  pointer-events: none;
 }
 
 .tab-active-pill {
@@ -2084,6 +2121,7 @@ const appendEmoji = (emoji: string) => {
   transition: transform 140ms linear, background-color 140ms linear, opacity 140ms linear;
   position: relative;
   z-index: 1;
+  pointer-events: auto;
 }
 
 .tab-item:active {

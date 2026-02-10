@@ -2155,7 +2155,8 @@ const appendEmoji = (emoji: string) => {
   width: 100%;
   box-sizing: border-box;
   align-items: flex-end;
-  gap: 6px;
+  gap: 5px;
+  padding: 0 5px;
   margin-bottom: 14px;
 }
 
@@ -2178,7 +2179,7 @@ const appendEmoji = (emoji: string) => {
 }
 
 .message-bubble {
-  max-width: calc(100% - 72px);
+  max-width: 68%;
   margin-left: 0;
   background: #ffffff;
   border-radius: 10px;
@@ -2201,7 +2202,7 @@ const appendEmoji = (emoji: string) => {
   user-select: text;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .message-sender {

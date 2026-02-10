@@ -133,7 +133,7 @@ const buildMessages = (contact: User, index: number): Message[] => {
 export const currentUser: User = {
   id: MOCK_MY_USER_ID,
   name: "Terence",
-  avatar: "https://cdn-icons-png.flaticon.com/512/4140/4140048.png",
+  avatar: `${AVATAR_BASE}Terence`,
   region: "Shenzhen, China",
   signature: "Keep it simple, keep it fast.",
   level: 9,

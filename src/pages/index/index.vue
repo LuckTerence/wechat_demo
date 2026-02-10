@@ -138,6 +138,26 @@ const subPageItems = computed(() => {
 });
 
 const hasInputText = computed(() => inputValue.value.trim().length > 0);
+const tabOrder: Tab[] = ["chat", "contact", "profile"];
+const tabTransitionName = ref("tab-slide-left");
+
+const tabIndexOf = (tab: Tab) => {
+  const index = tabOrder.indexOf(tab);
+  return index < 0 ? 0 : index;
+};
+
+const tabActivePillStyle = computed(() => {
+  return {
+    transform: `translateX(calc(${tabIndexOf(currentTab.value)} * 100%))`,
+  };
+});
+
+const switchTabWithSlide = (nextTab: Tab) => {
+  const currentIndex = tabIndexOf(currentTab.value);
+  const nextIndex = tabIndexOf(nextTab);
+  tabTransitionName.value = nextIndex >= currentIndex ? "tab-slide-left" : "tab-slide-right";
+  currentTab.value = nextTab;
+};
 
 const isMine = (message: Message) => message.senderId === MOCK_MY_USER_ID;
 const messageDomId = (id: string) => `msg-${id}`;
@@ -545,7 +565,7 @@ const beginCreateGroup = () => {
   closeSearch();
   groupCreateMode.value = true;
   selectedGroupMemberIds.value = [];
-  currentTab.value = "contact";
+  switchTabWithSlide("contact");
 };
 
 const toggleGroupMember = (contactId: string) => {
@@ -622,7 +642,7 @@ const createGroupFromSelected = () => {
   activeSessionId.value = groupId;
   groupCreateMode.value = false;
   selectedGroupMemberIds.value = [];
-  currentTab.value = "chat";
+  switchTabWithSlide("chat");
   closeMoreMenu();
   uni.showToast({
     title: "Group created",
@@ -730,7 +750,7 @@ const handleTabSelect = (tab: Tab) => {
   if (groupCreateMode.value && tab !== "contact") {
     cancelCreateGroup();
   }
-  currentTab.value = tab;
+  switchTabWithSlide(tab);
 };
 
 const startChatWithContact = (contactId: string) => {
@@ -749,7 +769,7 @@ const startChatWithContact = (contactId: string) => {
   updateSessionById(session.id, (item) => (item.unreadCount > 0 ? { ...item, unreadCount: 0 } : item));
   activeSessionId.value = session.id;
   viewingContactId.value = null;
-  currentTab.value = "chat";
+  switchTabWithSlide("chat");
   closeMoreMenu();
   emojiPanelOpen.value = false;
 };
@@ -1049,7 +1069,7 @@ const appendEmoji = (emoji: string) => {
 
     <view v-else class="full-page">
       <view class="content-area">
-        <transition name="tab-fade" mode="out-in">
+        <transition :name="tabTransitionName" mode="out-in">
           <view v-if="currentTab === 'chat'" key="chat" class="tab-page">
             <view class="header header-main">
               <text class="header-brand">LetWechat</text>
@@ -1156,18 +1176,12 @@ const appendEmoji = (emoji: string) => {
           </view>
 
           <view v-else-if="currentTab === 'contact'" key="contact" class="tab-page">
-            <view class="header" :class="{ 'header-contact-mode': groupCreateMode }">
-              <view v-if="groupCreateMode" class="group-header-btn" @tap="cancelCreateGroup">Cancel</view>
-              <text class="header-title">{{ groupCreateMode ? "Select Contacts" : "Contacts" }}</text>
-              <view
-                v-if="groupCreateMode"
-                class="group-header-btn done"
-                :class="{ disabled: selectedGroupCount === 0 }"
-                @tap="createGroupFromSelected"
-              >
+            <view v-if="groupCreateMode" class="header header-contact-mode">
+              <view class="group-header-btn" @tap="cancelCreateGroup">Cancel</view>
+              <text class="header-title">Select Contacts</text>
+              <view class="group-header-btn done" :class="{ disabled: selectedGroupCount === 0 }" @tap="createGroupFromSelected">
                 Create ({{ selectedGroupCount }})
               </view>
-              <view v-else class="group-header-placeholder" />
             </view>
             <scroll-view class="list-scroll with-tabbar" scroll-y>
               <view v-if="groupCreateMode && contactRows.length === 0" class="chat-empty">No selectable contacts</view>
@@ -1209,6 +1223,7 @@ const appendEmoji = (emoji: string) => {
       </view>
 
       <view class="tab-bar">
+        <view class="tab-active-pill" :style="tabActivePillStyle" />
         <view class="tab-item" :class="{ active: currentTab === 'chat' }" @tap="handleTabSelect('chat')">
           <view class="tab-icon-wrap">
             <uni-icons
@@ -1266,33 +1281,31 @@ const appendEmoji = (emoji: string) => {
   overflow-x: hidden;
 }
 
-.tab-fade-enter-active,
-.tab-fade-leave-active {
-  transition: opacity 220ms linear, filter 220ms linear, transform 220ms linear;
+.tab-slide-left-enter-active,
+.tab-slide-left-leave-active,
+.tab-slide-right-enter-active,
+.tab-slide-right-leave-active {
+  transition: opacity 240ms linear, transform 240ms linear;
 }
 
-.tab-fade-enter-from {
+.tab-slide-left-enter-from {
   opacity: 0;
-  filter: brightness(0.92);
-  transform: translateY(8px);
+  transform: translateX(26px);
 }
 
-.tab-fade-enter-to {
-  opacity: 1;
-  filter: brightness(1);
-  transform: translateY(0);
-}
-
-.tab-fade-leave-from {
-  opacity: 1;
-  filter: brightness(1);
-  transform: translateY(0);
-}
-
-.tab-fade-leave-to {
+.tab-slide-left-leave-to {
   opacity: 0;
-  filter: brightness(0.92);
-  transform: translateY(-8px);
+  transform: translateX(-26px);
+}
+
+.tab-slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-26px);
+}
+
+.tab-slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(26px);
 }
 
 .content-area {
@@ -2042,6 +2055,19 @@ const appendEmoji = (emoji: string) => {
   z-index: 50;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
   backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.tab-active-pill {
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  width: calc((100% - 16px) / 3);
+  height: 52px;
+  border-radius: 26px;
+  background: #e8f3ff;
+  transition: transform 220ms linear;
+  z-index: 0;
 }
 
 .tab-item {
@@ -2054,6 +2080,8 @@ const appendEmoji = (emoji: string) => {
   justify-content: center;
   color: #6f7b88;
   transition: transform 140ms linear, background-color 140ms linear, opacity 140ms linear;
+  position: relative;
+  z-index: 1;
 }
 
 .tab-item:active {
@@ -2061,7 +2089,7 @@ const appendEmoji = (emoji: string) => {
 }
 
 .tab-item.active {
-  background: #e8f3ff;
+  background: transparent;
   color: #006eff;
 }
 
@@ -2122,6 +2150,10 @@ const appendEmoji = (emoji: string) => {
 
 .message-row {
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: flex-end;
+  gap: 10px;
   margin-bottom: 14px;
 }
 
@@ -2138,20 +2170,22 @@ const appendEmoji = (emoji: string) => {
   height: 40px;
   border-radius: 4px;
   background: #d9d9d9;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .message-bubble {
-  max-width: 70%;
-  margin-left: 10px;
+  max-width: calc(100% - 56px);
+  margin-left: 0;
   background: #ffffff;
   border-radius: 6px;
   padding: 10px 12px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .message-bubble.mine {
-  margin-left: 0;
-  margin-right: 10px;
+  margin-right: 0;
   background: #95ec69;
 }
 

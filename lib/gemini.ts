@@ -63,18 +63,39 @@ const getProviderOrder = (): Provider[] => {
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
 const isLikelyDashScopeKey = (apiKey: string) => /^sk-[a-f0-9]{32}$/i.test(apiKey.trim());
 const isLikelyDashScopeModel = (model: string) => /^(qwen|qwq|tongyi|kimi|glm)/i.test(model.trim());
+const isOpenAIOfficialBaseUrl = (baseUrl: string) => /^https:\/\/api\.openai\.com\/v1$/i.test(baseUrl);
 
 const resolveOpenAIBaseUrl = (apiKey: string, model: string): string => {
   const configured = process.env.OPENAI_BASE_URL?.trim();
+  const useDashScope = isLikelyDashScopeKey(apiKey) || isLikelyDashScopeModel(model);
+
   if (configured) {
-    return normalizeBaseUrl(configured);
+    const normalized = normalizeBaseUrl(configured);
+    if (useDashScope && isOpenAIOfficialBaseUrl(normalized)) {
+      return DEFAULT_DASHSCOPE_BASE_URL;
+    }
+
+    return normalized;
   }
 
-  if (isLikelyDashScopeKey(apiKey) || isLikelyDashScopeModel(model)) {
+  if (useDashScope) {
     return DEFAULT_DASHSCOPE_BASE_URL;
   }
 
   return DEFAULT_OPENAI_BASE_URL;
+};
+
+const resolveOpenAIModel = (apiKey: string): string => {
+  const configured = process.env.OPENAI_MODEL?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  if (isLikelyDashScopeKey(apiKey)) {
+    return "qwen3-max";
+  }
+
+  return DEFAULT_OPENAI_MODEL;
 };
 
 const extractOpenAIText = (content: unknown): string => {
@@ -104,7 +125,7 @@ const generateOpenAICompatibleReply = async (
     throw new Error("Missing OPENAI_API_KEY.");
   }
 
-  const model = DEFAULT_OPENAI_MODEL;
+  const model = resolveOpenAIModel(apiKey);
   const baseUrl = resolveOpenAIBaseUrl(apiKey, model);
   const endpoint = `${baseUrl}/chat/completions`;
 

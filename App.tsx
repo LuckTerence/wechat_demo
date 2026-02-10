@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { generateContacts, generateInitialSessions, currentUser } from './services/mockData';
 import { getAIReply } from './services/ai';

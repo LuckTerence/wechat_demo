@@ -1,20 +1,49 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# WeChat Demo (Next.js Fullstack)
 
-# Run and deploy your AI Studio app
+This project is now a Next.js fullstack app:
+- Frontend: React UI rendered by Next.js
+- Backend: Next.js API route (`/api/ai-reply`) calls OpenAI-compatible APIs or Gemini
+- Security: server-side keys are read only on the server and never sent to the browser
 
-This contains everything you need to run your app locally.
+## 1. Install
 
-View your app in AI Studio: https://ai.studio/apps/drive/1_AHNFhrRUAaQ4F19xR5b0uUeUBvduXn4
+```bash
+npm install
+```
 
-## Run Locally
+## 2. Configure server env
 
-**Prerequisites:**  Node.js
+Create `.env.local` from `.env.example`.
 
+Use OpenAI-compatible (official OpenAI or third-party compatible endpoints):
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_API_KEY=your_real_key
+```
+
+Or use Gemini:
+
+```bash
+GEMINI_API_KEY=your_real_key
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+Provider order:
+- If `OPENAI_API_KEY` is set, backend tries OpenAI-compatible first.
+- If OpenAI-compatible fails and `GEMINI_API_KEY` is set, backend falls back to Gemini.
+
+## 3. Run
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Security notes
+
+- Do not put server keys (`OPENAI_API_KEY`, `GEMINI_API_KEY`) in `NEXT_PUBLIC_*` variables.
+- Do not call AI providers directly from client components.
+- Keep AI calls inside server files (`app/api/**`, `lib/gemini.ts`).

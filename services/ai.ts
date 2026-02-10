@@ -1,32 +1,35 @@
-import { GoogleGenAI } from "@google/genai";
-import { Message } from '../types';
+import type { Message } from "../types";
 
-// Initialize AI with the API Key from environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+const FALLBACK_REPLY = "I'm a bit busy right now, talk later!";
 
-export const getAIReply = async (messages: Message[], contactName: string): Promise<string> => {
+export const getAIReply = async (
+  messages: Message[],
+  contactName: string,
+): Promise<string> => {
   try {
-    // Filter text messages for context, simple logic for demo
-    const lastUserMessage = [...messages].reverse().find(m => m.senderId === 'me' && m.type === 'text');
-    
-    if (!lastUserMessage) return "Hello!";
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: lastUserMessage.content,
-      config: {
-        systemInstruction: `You are ${contactName}, a user in a chat application like WeChat. 
-        Your replies should be:
-        1. Casual and natural (like a real friend).
-        2. Concise (usually 1-2 sentences).
-        3. Relevant to the previous message.
-        4. Do not act like an AI assistant, act like a human friend.`,
-      }
+    const response = await fetch("/api/ai-reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify({ messages, contactName }),
     });
 
-    return response.text || "Thumbs up!";
+    if (!response.ok) {
+      console.error("AI API request failed:", response.status, response.statusText);
+      return FALLBACK_REPLY;
+    }
+
+    const payload = (await response.json()) as { reply?: string };
+
+    if (typeof payload.reply === "string" && payload.reply.trim().length > 0) {
+      return payload.reply;
+    }
+
+    return FALLBACK_REPLY;
   } catch (error) {
     console.error("AI Error:", error);
-    return "I'm a bit busy right now, talk later!";
+    return FALLBACK_REPLY;
   }
 };

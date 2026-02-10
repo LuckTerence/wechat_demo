@@ -6,6 +6,7 @@ const DEFAULT_REPLY = "I'm a bit busy right now, talk later!";
 const EMPTY_CONTEXT_REPLY = "Hello!";
 const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 const DEFAULT_OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 type Provider = "openai" | "gemini";
@@ -60,6 +61,21 @@ const getProviderOrder = (): Provider[] => {
 };
 
 const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
+const isLikelyDashScopeKey = (apiKey: string) => /^sk-[a-f0-9]{32}$/i.test(apiKey.trim());
+const isLikelyDashScopeModel = (model: string) => /^(qwen|qwq|tongyi|kimi|glm)/i.test(model.trim());
+
+const resolveOpenAIBaseUrl = (apiKey: string, model: string): string => {
+  const configured = process.env.OPENAI_BASE_URL?.trim();
+  if (configured) {
+    return normalizeBaseUrl(configured);
+  }
+
+  if (isLikelyDashScopeKey(apiKey) || isLikelyDashScopeModel(model)) {
+    return DEFAULT_DASHSCOPE_BASE_URL;
+  }
+
+  return DEFAULT_OPENAI_BASE_URL;
+};
 
 const extractOpenAIText = (content: unknown): string => {
   if (typeof content === "string") {
@@ -88,7 +104,8 @@ const generateOpenAICompatibleReply = async (
     throw new Error("Missing OPENAI_API_KEY.");
   }
 
-  const baseUrl = normalizeBaseUrl(process.env.OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL);
+  const model = DEFAULT_OPENAI_MODEL;
+  const baseUrl = resolveOpenAIBaseUrl(apiKey, model);
   const endpoint = `${baseUrl}/chat/completions`;
 
   const response = await fetch(endpoint, {
@@ -98,7 +115,7 @@ const generateOpenAICompatibleReply = async (
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: DEFAULT_OPENAI_MODEL,
+      model,
       messages: [
         { role: "system", content: buildSystemInstruction(contactName) },
         { role: "user", content: lastUserText },
@@ -111,7 +128,7 @@ const generateOpenAICompatibleReply = async (
   if (!response.ok) {
     const body = await response.text();
     throw new Error(
-      `OpenAI-compatible request failed (${response.status} ${response.statusText}): ${body.slice(0, 400)}`,
+      `OpenAI-compatible request failed (${response.status} ${response.statusText}, baseUrl=${baseUrl}): ${body.slice(0, 400)}`,
     );
   }
 

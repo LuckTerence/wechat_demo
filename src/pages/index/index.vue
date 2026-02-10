@@ -137,6 +137,8 @@ const subPageItems = computed(() => {
   return ["Language", "Storage", "Appearance", "Photos, Videos, Files", "Accessibility"];
 });
 
+const hasInputText = computed(() => inputValue.value.trim().length > 0);
+
 const isMine = (message: Message) => message.senderId === MOCK_MY_USER_ID;
 const messageDomId = (id: string) => `msg-${id}`;
 
@@ -853,6 +855,14 @@ const handleSendText = () => {
   void sendMessage(activeSessionId.value, text, "text");
 };
 
+const handlePrimaryAction = () => {
+  if (hasInputText.value) {
+    handleSendText();
+    return;
+  }
+  chooseImage();
+};
+
 const chooseImage = () => {
   if (!activeSessionId.value) {
     return;
@@ -990,22 +1000,40 @@ const appendEmoji = (emoji: string) => {
       </scroll-view>
 
       <view class="input-bar">
-        <view class="input-emoji-btn" :class="{ active: emojiPanelOpen }" @tap="toggleEmojiPanel">
-          <view class="emoji-face">
-            <view class="emoji-eye left" />
-            <view class="emoji-eye right" />
-            <view class="emoji-mouth" />
+        <view class="input-shell">
+          <view class="input-emoji-btn" :class="{ active: emojiPanelOpen }" @tap="toggleEmojiPanel">
+            <view class="emoji-face">
+              <view class="emoji-eye left" />
+              <view class="emoji-eye right" />
+              <view class="emoji-mouth" />
+            </view>
+          </view>
+          <input
+            v-model="inputValue"
+            class="chat-input"
+            placeholder="Message"
+            confirm-type="send"
+            @confirm="handleSendText"
+          />
+        </view>
+        <view class="input-primary-btn" :class="{ active: hasInputText }" @tap="handlePrimaryAction">
+          <view class="primary-icon-stack">
+            <uni-icons
+              type="paperclip"
+              size="24"
+              class="primary-icon clip"
+              :class="{ show: !hasInputText }"
+              color="#6b7380"
+            />
+            <uni-icons
+              type="paperplane"
+              size="22"
+              class="primary-icon send"
+              :class="{ show: hasInputText }"
+              color="#ffffff"
+            />
           </view>
         </view>
-        <input
-          v-model="inputValue"
-          class="chat-input"
-          placeholder="Type a message"
-          confirm-type="send"
-          @confirm="handleSendText"
-        />
-        <view class="input-action ghost" @tap="chooseImage">Image</view>
-        <view class="input-action" @tap="handleSendText">Send</view>
       </view>
       <view v-if="emojiPanelOpen" class="emoji-panel">
         <view
@@ -2070,7 +2098,7 @@ const appendEmoji = (emoji: string) => {
 .message-list {
   flex: 1;
   min-height: 0;
-  padding: 0 12px;
+  padding: 0 12px 8px;
 }
 
 .message-padding {
@@ -2131,31 +2159,42 @@ const appendEmoji = (emoji: string) => {
 }
 
 .input-bar {
-  min-height: 56px;
-  background: rgba(248, 250, 253, 0.96);
+  min-height: 74px;
+  background: rgba(248, 250, 253, 0.9);
   border-top: 1px solid #dce3ee;
-  padding: 8px 8px 10px;
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   backdrop-filter: blur(8px);
 }
 
+.input-shell {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  border-radius: 26px;
+  background: #f1f3f3;
+  border: 1px solid #d9dee6;
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 6px;
+  transition: border-color 160ms linear, background-color 160ms linear;
+}
+
 .input-emoji-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  border: 1px solid #d6dee8;
-  background: #ffffff;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 140ms linear, background-color 140ms linear, border-color 140ms linear;
+  transition: transform 140ms linear, background-color 140ms linear;
 }
 
 .input-emoji-btn.active {
-  background: #e8f3ff;
-  border-color: #bfd9ff;
+  background: #e8edf3;
 }
 
 .input-emoji-btn:active {
@@ -2163,9 +2202,9 @@ const appendEmoji = (emoji: string) => {
 }
 
 .emoji-face {
-  width: 18px;
-  height: 18px;
-  border: 1.8px solid #5f6975;
+  width: 21px;
+  height: 21px;
+  border: 1.9px solid #6d7680;
   border-radius: 50%;
   position: relative;
   box-sizing: border-box;
@@ -2173,11 +2212,11 @@ const appendEmoji = (emoji: string) => {
 
 .emoji-eye {
   position: absolute;
-  top: 5px;
-  width: 2px;
-  height: 2px;
+  top: 6px;
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
-  background: #5f6975;
+  background: #6d7680;
 }
 
 .emoji-eye.left {
@@ -2190,11 +2229,11 @@ const appendEmoji = (emoji: string) => {
 
 .emoji-mouth {
   position: absolute;
-  left: 4px;
-  bottom: 4px;
-  width: 8px;
+  left: 5px;
+  bottom: 5px;
+  width: 9px;
   height: 4px;
-  border-bottom: 1.8px solid #5f6975;
+  border-bottom: 1.9px solid #6d7680;
   border-radius: 0 0 6px 6px;
 }
 
@@ -2230,34 +2269,52 @@ const appendEmoji = (emoji: string) => {
 .chat-input {
   flex: 1;
   height: 40px;
-  background: #ffffff;
-  border-radius: 6px;
-  padding: 0 10px;
+  background: transparent;
+  border-radius: 20px;
+  padding: 0 6px 0 2px;
   font-size: 16px;
-  color: #111111;
+  color: #1f2937;
 }
 
-.input-action {
-  height: 36px;
-  min-width: 54px;
-  border-radius: 6px;
-  background: #07c160;
-  color: #ffffff;
-  font-size: 14px;
-  text-align: center;
-  line-height: 36px;
-  padding: 0 10px;
-  transition: transform 140ms linear, opacity 140ms linear, background-color 140ms linear;
+.input-primary-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: #eef2f6;
+  border: 1px solid #d7dfe9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 160ms linear, background-color 180ms linear, border-color 180ms linear;
 }
 
-.input-action.ghost {
-  background: #ffffff;
-  color: #333333;
-  border: 1px solid #d6d6d6;
+.input-primary-btn.active {
+  background: #2f9de6;
+  border-color: #2f9de6;
 }
 
-.input-action:active {
+.input-primary-btn:active {
   transform: scale(0.96);
+}
+
+.primary-icon-stack {
+  width: 24px;
+  height: 24px;
+  position: relative;
+}
+
+.primary-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.84);
+  opacity: 0;
+  transition: opacity 180ms linear, transform 180ms linear;
+}
+
+.primary-icon.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .contact-header {

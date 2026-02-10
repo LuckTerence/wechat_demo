@@ -1,0 +1,20 @@
+{
+  "name": "letwechat-uniapp-demo",
+  "appid": "__UNI__LETWECHAT_DEMO",
+  "description": "LetWechat style chat demo built with uni-app (Vue3).",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true
+  },
+  "h5": {
+    "title": "LetWechat UniApp Demo"
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    }
+  }
+}

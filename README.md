@@ -1,20 +1,20 @@
-# 微信聊天 Demo（Next.js 全栈）
+# 微信聊天 Demo（uni-app / Vue3）
 
-一个微信风格的聊天演示项目，前端使用 Next.js + React 构建界面，后端通过 `/api/ai-reply` 调用大模型生成自动回复。
+这是一个微信风格的聊天演示项目，已从 Next.js/React 迁移到 **uni-app（Vue3 + Vite）**。
 
-## 项目特点
+## 功能说明
 
-- 微信风格聊天 UI，支持消息发送、会话切换、移动端访问
-- 服务端统一代理 AI 请求，避免在浏览器暴露密钥
-- 支持 OpenAI 兼容接口（含第三方平台）和 Gemini
-- 部署到 Vercel 即可直接运行
+- 聊天列表、联系人、个人中心三栏
+- 聊天详情页（文本消息、图片消息）
+- AI 自动回复（通过服务端代理接口）
+- 移动端友好的页面布局
 
 ## 技术栈
 
-- Next.js 15
-- React 19
+- uni-app
+- Vue 3
 - TypeScript
-- Tailwind CSS
+- Vite
 
 ## 快速开始
 
@@ -24,58 +24,63 @@
 npm install
 ```
 
-### 2. 配置环境变量
+### 2. 启动本地后端 API（必须）
 
-复制 `.env.example` 为 `.env.local`，然后按你使用的平台填写。
-
-推荐：通义千问（DashScope OpenAI 兼容接口）
+后端读取 `.env.local` 或 `.env.api.local` 中的服务端密钥：
 
 ```bash
 OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 OPENAI_MODEL=qwen3-max
-OPENAI_API_KEY=your_dashscope_key
+OPENAI_API_KEY=your_server_only_key
+PORT=8787
 ```
 
-可选：OpenAI 官方
+启动后端：
 
 ```bash
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_API_KEY=your_openai_key
+npm run dev:api
 ```
 
-可选：Gemini（作为备用）
+### 3. 配置前端环境变量
+
+复制 `.env.example` 为 `.env.local`，配置 AI 代理接口地址：
 
 ```bash
-GEMINI_API_KEY=your_gemini_key
-GEMINI_MODEL=gemini-2.0-flash
+VITE_AI_REPLY_URL=http://127.0.0.1:8787/api/ai-reply
 ```
 
-Provider 顺序：
+说明：
+- 该项目是前端应用，建议调用你自己的服务端代理接口。
+- 不要把 OpenAI/通义/Gemini 的真实密钥放到 `VITE_*` 变量中。
 
-- 配置了 `OPENAI_API_KEY` 时，优先走 OpenAI 兼容接口
-- OpenAI 兼容请求失败且配置了 `GEMINI_API_KEY` 时，会回退到 Gemini
-
-### 3. 启动项目
+### 4. 本地运行（H5）
 
 ```bash
-npm run dev
+npm run dev:h5
 ```
 
-打开 `http://localhost:3000`。
+### 5. 构建（H5）
 
-## 部署说明（Vercel）
+```bash
+npm run build:h5
+```
 
-在 Vercel 项目里配置与本地一致的环境变量后重新部署：
+可选：清理缓存后重编译
 
-- `OPENAI_BASE_URL`
-- `OPENAI_MODEL`
-- `OPENAI_API_KEY`
-- （可选）`GEMINI_API_KEY`
-- （可选）`GEMINI_MODEL`
+```bash
+npm run clean
+```
 
-## 安全说明
+## 目录结构（核心）
 
-- 不要把服务端密钥放到 `NEXT_PUBLIC_*` 变量里
-- 不要在前端组件里直接请求 AI 平台
-- 所有 AI 调用都放在服务端文件（`app/api/**`, `lib/gemini.ts`）
+- `src/pages/index/index.vue`: 主页面（聊天、联系人、个人中心）
+- `src/common/mockData.ts`: 模拟联系人与会话数据
+- `src/common/ai.ts`: AI 回复请求封装
+- `src/pages.json`: uni-app 页面路由配置
+- `src/manifest.json`: uni-app 应用配置
+
+## 安全建议
+
+- API key 只放在服务端，不放在前端仓库
+- `.env.local` 不要提交到 GitHub
+- 线上请使用服务端转发 AI 请求，避免密钥泄露

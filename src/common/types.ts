@@ -4,28 +4,24 @@ export interface User {
   avatar: string;
   region?: string;
   signature?: string;
+  level?: number;
 }
 
 export interface Message {
   id: string;
-  senderId: string; // 'me' or other userId
-  type: 'text' | 'image';
+  senderId: string;
+  type: "text" | "image";
   content: string;
   timestamp: number;
 }
 
 export interface ChatSession {
   id: string;
-  userId: string; // The person/group being chatted with
+  userId: string;
   messages: Message[];
   unreadCount: number;
   isGroup?: boolean;
+  groupMemberIds?: string[];
 }
 
-export interface AppState {
-  user: User; // Current logged in user
-  contacts: User[];
-  sessions: ChatSession[];
-}
-
-export type Tab = 'chat' | 'contact' | 'profile';
+export type Tab = "chat" | "contact" | "profile";

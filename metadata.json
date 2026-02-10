@@ -1,8 +1,0 @@
-{
-  "name": "WeChat Clone Demo",
-  "description": "A high-fidelity IM application demo featuring WeChat-style UI, smooth animations, and real-time message simulation.",
-  "requestFramePermissions": [
-    "microphone",
-    "camera"
-  ]
-}

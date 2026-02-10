@@ -15,6 +15,7 @@ out
 *.local
 .env*
 !.env.example
+unpackage
 
 # Editor directories and files
 .vscode/*

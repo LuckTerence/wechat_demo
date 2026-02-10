@@ -995,7 +995,7 @@ const appendEmoji = (emoji: string) => {
           class="message-row"
           :class="{ mine: row.mine, entering: row.entering }"
         >
-          <image class="message-avatar" :src="row.avatar" mode="aspectFill" @tap="openContact(row.senderId)" />
+          <image class="message-avatar" :src="row.avatar" mode="aspectFit" @tap="openContact(row.senderId)" />
           <view class="message-bubble" :class="{ mine: row.mine }">
             <text v-if="row.senderName" class="message-sender">{{ row.senderName }}</text>
             <text
@@ -1204,7 +1204,7 @@ const appendEmoji = (emoji: string) => {
           <view v-else key="profile" class="tab-page">
             <scroll-view class="list-scroll with-tabbar" scroll-y>
               <view class="profile-card">
-                <image class="profile-avatar" :src="currentUser.avatar" mode="aspectFill" />
+                <image class="profile-avatar" :src="currentUser.avatar" mode="aspectFit" />
                 <view class="profile-meta">
                   <text class="profile-name">{{ currentUser.name }}</text>
                   <text class="profile-id">LetWechat ID: {{ currentUser.id }}</text>
@@ -1979,9 +1979,11 @@ const appendEmoji = (emoji: string) => {
 .profile-avatar {
   width: 64px;
   height: 64px;
-  border-radius: 8px;
-  background: #d9d9d9;
+  border-radius: 32px;
+  background: #ffffff;
   margin-right: 14px;
+  overflow: hidden;
+  border: 1px solid #e3e8ef;
 }
 
 .profile-meta {
@@ -2153,7 +2155,7 @@ const appendEmoji = (emoji: string) => {
   width: 100%;
   box-sizing: border-box;
   align-items: flex-end;
-  gap: 10px;
+  gap: 6px;
   margin-bottom: 14px;
 }
 
@@ -2168,17 +2170,18 @@ const appendEmoji = (emoji: string) => {
 .message-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 4px;
-  background: #d9d9d9;
+  border-radius: 20px;
+  background: #ffffff;
   flex-shrink: 0;
   overflow: hidden;
+  border: 1px solid #e3e8ef;
 }
 
 .message-bubble {
-  max-width: calc(100% - 56px);
+  max-width: calc(100% - 72px);
   margin-left: 0;
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 10px 12px;
   min-width: 0;
   overflow: hidden;
@@ -2190,13 +2193,15 @@ const appendEmoji = (emoji: string) => {
 }
 
 .message-text {
+  display: block;
+  max-width: 100%;
   color: #111111;
   font-size: 15px;
   line-height: 22px;
   user-select: text;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  word-break: break-word;
+  word-break: break-all;
 }
 
 .message-sender {

@@ -24,6 +24,8 @@ const chatListScrollIntoView = ref("");
 const chatListScrollTop = ref(0);
 const chatListSavedScrollTop = ref(0);
 const chatListLastScrollTop = ref(0);
+const chatListRearmTop = ref(0);
+const chatListScrollingDown = ref(false);
 const lastChatTabTapAt = ref(0);
 const chatListRefreshing = ref(false);
 const chatListRefresherTriggered = ref(false);
@@ -677,6 +679,7 @@ const handleChatListLoadMore = () => {
   if (
     chatListLoadingMore.value ||
     !chatListLoadMoreArmed.value ||
+    !chatListScrollingDown.value ||
     !chatListHasMore.value ||
     searchKeyword.value.trim() ||
     now - chatListLastLoadMoreAt.value < 500
@@ -686,6 +689,7 @@ const handleChatListLoadMore = () => {
 
   chatListLastLoadMoreAt.value = now;
   chatListLoadMoreArmed.value = false;
+  chatListRearmTop.value = Math.max(0, chatListLastScrollTop.value - 160);
   chatListLoadingMore.value = true;
   chatListLoadingText.value = "Loading...";
 
@@ -702,7 +706,10 @@ const handleChatListScroll = (event: any) => {
   if (!Number.isFinite(top)) {
     return;
   }
-  if (top < chatListLastScrollTop.value - 8) {
+  const delta = top - chatListLastScrollTop.value;
+  chatListScrollingDown.value = delta > 1;
+
+  if (!chatListLoadMoreArmed.value && top <= chatListRearmTop.value) {
     chatListLoadMoreArmed.value = true;
   }
   chatListLastScrollTop.value = top;
@@ -751,6 +758,8 @@ const refreshChatTab = () => {
 
   chatListSavedScrollTop.value = 0;
   chatListLastScrollTop.value = 0;
+  chatListRearmTop.value = 0;
+  chatListScrollingDown.value = false;
   chatListLoadMoreArmed.value = true;
   chatListScrollTop.value = 0;
   chatListScrollIntoView.value = "chat-list-top";
@@ -1178,7 +1187,7 @@ const appendEmoji = (emoji: string) => {
               @scroll="handleChatListScroll"
               @refresherrefresh="handleChatListRefresh"
               @scrolltolower="handleChatListLoadMore"
-              :lower-threshold="80"
+              :lower-threshold="24"
             >
               <view id="chat-list-top" class="list-anchor" />
               <view v-if="visibleSessionRows.length === 0" class="chat-empty">No chat results</view>

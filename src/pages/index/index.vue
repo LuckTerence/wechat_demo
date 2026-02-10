@@ -2143,7 +2143,7 @@ const appendEmoji = (emoji: string) => {
 .message-list {
   flex: 1;
   min-height: 0;
-  padding: 0 12px 8px;
+  padding: 0 0 8px;
 }
 
 .message-padding {
@@ -2155,13 +2155,13 @@ const appendEmoji = (emoji: string) => {
   width: 100%;
   box-sizing: border-box;
   align-items: flex-end;
-  gap: 5px;
-  padding: 0 5px;
+  justify-content: flex-start;
+  padding: 0 12px;
   margin-bottom: 14px;
 }
 
 .message-row.mine {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
 .message-row.entering {
@@ -2171,26 +2171,38 @@ const appendEmoji = (emoji: string) => {
 .message-avatar {
   width: 40px;
   height: 40px;
+  display: block;
   border-radius: 20px;
   background: #ffffff;
   flex-shrink: 0;
   overflow: hidden;
   border: 1px solid #e3e8ef;
+  box-sizing: border-box;
 }
 
 .message-bubble {
-  max-width: 68%;
+  max-width: 70%;
   margin-left: 0;
   background: #ffffff;
   border-radius: 10px;
   padding: 10px 12px;
   min-width: 0;
   overflow: hidden;
+  margin-left: 5px;
 }
 
 .message-bubble.mine {
-  margin-right: 0;
+  margin-left: 0;
+  margin-right: 5px;
   background: #95ec69;
+}
+
+.message-row.mine .message-bubble {
+  order: 1;
+}
+
+.message-row.mine .message-avatar {
+  order: 2;
 }
 
 .message-text {

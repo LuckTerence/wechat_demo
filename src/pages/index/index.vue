@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { getAIReply } from "../../common/ai";
 import { MOCK_MY_USER_ID } from "../../common/constants";
 import { cloneSessions, currentUser, generateContacts, generateSessionPool } from "../../common/mockData";
@@ -33,6 +33,7 @@ const chatListLoadingMore = ref(false);
 const chatListLoadMoreArmed = ref(true);
 const chatListLoadingText = ref("Pull up to load more");
 const chatListLastLoadMoreAt = ref(0);
+const isH5Mobile = ref(false);
 const searchOpen = ref(false);
 const searchKeyword = ref("");
 const debouncedSearchKeyword = ref("");
@@ -147,6 +148,16 @@ const subPageItems = computed(() => {
 const hasInputText = computed(() => inputValue.value.trim().length > 0);
 const tabOrder: Tab[] = ["chat", "contact", "profile"];
 const tabTransitionName = ref("tab-slide-left");
+
+const updateH5MobileFlag = () => {
+  if (typeof window === "undefined") {
+    isH5Mobile.value = false;
+    return;
+  }
+  const ua = window.navigator.userAgent.toLowerCase();
+  const mobileUA = /android|iphone|ipad|ipod|mobile|harmonyos|miui|ucbrowser|mqqbrowser/.test(ua);
+  isH5Mobile.value = mobileUA || window.innerWidth <= 900;
+};
 
 const tabIndexOf = (tab: Tab) => {
   const index = tabOrder.indexOf(tab);
@@ -500,6 +511,16 @@ onBeforeUnmount(() => {
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer);
   }
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", updateH5MobileFlag);
+  }
+});
+
+onMounted(() => {
+  updateH5MobileFlag();
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", updateH5MobileFlag, { passive: true });
+  }
 });
 
 const openSession = (sessionId: string) => {
@@ -674,7 +695,7 @@ const appendMoreSessions = (count: number) => {
   sessionCursor.value = nextCursor;
 };
 
-const handleChatListLoadMore = () => {
+const runChatListLoadMore = () => {
   const now = Date.now();
   if (
     chatListLoadingMore.value ||
@@ -701,6 +722,22 @@ const handleChatListLoadMore = () => {
   }, 280);
 };
 
+const handleChatListLoadMore = () => {
+  if (isH5Mobile.value) {
+    return;
+  }
+  runChatListLoadMore();
+};
+
+const handleChatListLoadMoreManual = () => {
+  if (!isH5Mobile.value) {
+    return;
+  }
+  chatListScrollingDown.value = true;
+  chatListLoadMoreArmed.value = true;
+  runChatListLoadMore();
+};
+
 const handleChatListScroll = (event: any) => {
   const top = Number(event?.detail?.scrollTop ?? 0);
   if (!Number.isFinite(top)) {
@@ -714,6 +751,9 @@ const handleChatListScroll = (event: any) => {
   }
   chatListLastScrollTop.value = top;
   chatListSavedScrollTop.value = top;
+  if (isH5Mobile.value) {
+    chatListScrollTop.value = top;
+  }
 };
 
 const refreshChatTab = () => {
@@ -1182,12 +1222,12 @@ const appendEmoji = (emoji: string) => {
               scroll-y
               :scroll-top="chatListScrollTop"
               :scroll-into-view="chatListScrollIntoView"
-              refresher-enabled
+              :refresher-enabled="!isH5Mobile"
               :refresher-triggered="chatListRefresherTriggered"
               @scroll="handleChatListScroll"
               @refresherrefresh="handleChatListRefresh"
               @scrolltolower="handleChatListLoadMore"
-              :lower-threshold="24"
+              :lower-threshold="isH5Mobile ? 0 : 24"
             >
               <view id="chat-list-top" class="list-anchor" />
               <view v-if="visibleSessionRows.length === 0" class="chat-empty">No chat results</view>
@@ -1216,7 +1256,14 @@ const appendEmoji = (emoji: string) => {
                 </view>
               </view>
               <view v-if="!searchKeyword.trim()" class="chat-list-footer">
-                <text class="chat-list-footer-text">{{ chatListLoadingText }}</text>
+                <view
+                  v-if="isH5Mobile && chatListHasMore"
+                  class="chat-list-load-more-btn"
+                  @tap="handleChatListLoadMoreManual"
+                >
+                  <text class="chat-list-load-more-text">{{ chatListLoadingMore ? "Loading..." : "Load more chats" }}</text>
+                </view>
+                <text v-else class="chat-list-footer-text">{{ chatListLoadingText }}</text>
               </view>
             </scroll-view>
           </view>
@@ -1938,15 +1985,38 @@ const appendEmoji = (emoji: string) => {
 }
 
 .chat-list-footer {
-  height: 56px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px 0;
 }
 
 .chat-list-footer-text {
   color: #a1aab6;
   font-size: 13px;
+}
+
+.chat-list-load-more-btn {
+  min-width: 148px;
+  height: 34px;
+  border-radius: 17px;
+  background: #e8f3ff;
+  border: 1px solid #cfe3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 140ms linear, opacity 140ms linear;
+}
+
+.chat-list-load-more-btn:active {
+  transform: scale(0.97);
+}
+
+.chat-list-load-more-text {
+  color: #146ad6;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .contact-list-item {

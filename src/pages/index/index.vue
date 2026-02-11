@@ -804,11 +804,12 @@ const refreshChatTab = () => {
   chatListScrollTop.value = 0;
   chatListScrollIntoView.value = "chat-list-top";
   chatListRefreshing.value = true;
+  const refreshVisualDuration = isH5Mobile.value ? 420 : 220;
   setTimeout(() => {
     chatListRefreshing.value = false;
     chatListRefresherTriggered.value = false;
     chatListScrollIntoView.value = "";
-  }, 220);
+  }, refreshVisualDuration);
 };
 
 const handleChatListRefresh = () => {
@@ -1215,6 +1216,10 @@ const appendEmoji = (emoji: string) => {
                 </view>
               </view>
               <view class="search-cancel" @tap="closeSearch">Cancel</view>
+            </view>
+            <view class="mobile-refresh-tip" :class="{ show: chatListRefreshing && isH5Mobile }">
+              <view class="mobile-refresh-spinner" />
+              <text class="mobile-refresh-text">Refreshing chats...</text>
             </view>
             <scroll-view
               class="list-scroll with-tabbar chat-list-scroll"
@@ -1823,6 +1828,42 @@ const appendEmoji = (emoji: string) => {
   width: 52px;
   opacity: 1;
   margin-left: 10px;
+}
+
+.mobile-refresh-tip {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f1f7ff;
+  border-bottom: 0 solid #d8e7fb;
+  transition: height 200ms linear, opacity 200ms linear, transform 200ms linear, border-width 200ms linear;
+}
+
+.mobile-refresh-tip.show {
+  height: 34px;
+  opacity: 1;
+  transform: translateY(0);
+  border-bottom-width: 1px;
+}
+
+.mobile-refresh-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #9ec3f1;
+  border-top-color: #2f85ea;
+  border-radius: 50%;
+  animation: refresh-spin 560ms linear infinite;
+}
+
+.mobile-refresh-text {
+  color: #2f85ea;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .list-scroll {
@@ -2614,6 +2655,15 @@ const appendEmoji = (emoji: string) => {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -1446,14 +1446,6 @@ const appendEmoji = (emoji: string) => {
   background: #f2f5fa;
 }
 
-.back-chevron {
-  color: #0f172a;
-  font-size: 26px;
-  line-height: 1;
-  font-weight: 700;
-  transform: translateY(-1px);
-}
-
 .back-label {
   margin-left: 4px;
   color: #334155;
@@ -1738,10 +1730,6 @@ const appendEmoji = (emoji: string) => {
 
 .group-header-btn.done.disabled {
   color: #aeb8c4;
-}
-
-.group-header-placeholder {
-  min-width: 76px;
 }
 
 .search-wrap {

@@ -1,9 +1,5 @@
 <script lang="ts">
-export default {
-  onLaunch() {
-    console.log("App Launch");
-  },
-};
+export default {};
 </script>
 
 <style>
